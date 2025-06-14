@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1E40AF;
+  --color-success: #15803D;
+  --color-danger: #DC2626;
+  --color-warning: #D97706;
+}
+
+.input { @apply w-full p-2 mb-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400; }
