@@ -10,7 +10,12 @@ import OwnerHome from '../pages/owner/OwnerHome';
 // …import other pages…
 
 export function ProtectedRoute({ children, role }) {
-  const { user, userRole } = useAuth();
+  const { user, userRole, loading } = useAuth();
+  
+  // Show nothing while loading to prevent flashing/redirects
+  if (loading) {
+    return null;
+  }
   
   if (!user) {
     return <Navigate to={`/${role}/auth`} />;

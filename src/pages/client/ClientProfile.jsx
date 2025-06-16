@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase/clientConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { FaUser, FaPhone, FaEnvelope, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
+import { FaUser, FaPhone, FaEnvelope, FaEdit, FaSave, FaTimes, FaCamera, FaSignOutAlt } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 
 const ClientProfile = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -16,6 +18,7 @@ const ClientProfile = () => {
     phone: '',
     email: user?.email || '',
     address: '',
+    photoURL: user?.photoURL || '',
     emergencyContact: {
       name: '',
       phone: '',
@@ -38,6 +41,7 @@ const ClientProfile = () => {
             phone: data.phone || '',
             email: user.email || '',
             address: data.address || '',
+            photoURL: data.photoURL || '',
             emergencyContact: data.emergencyContact || {
               name: '',
               phone: '',
@@ -110,6 +114,24 @@ const ClientProfile = () => {
     setError('');
   };
 
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // TODO: Implement photo upload to Firebase Storage
+    // For now, we'll just show a message
+    setSuccess('Photo upload functionality coming soon!');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      setError('Failed to logout. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-pink-50">
@@ -121,36 +143,67 @@ const ClientProfile = () => {
   return (
     <div className="min-h-screen bg-pink-50 p-6">
       <div className="mx-auto max-w-2xl">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-pink-700">My Profile</h1>
-          {!isEditing ? (
+        <div className="mb-6 flex flex-col items-center">
+          <div className="relative mb-4">
+            <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-pink-600 bg-white">
+              {profile.photoURL ? (
+                <img
+                  src={profile.photoURL}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                  <FaUser className="h-16 w-16 text-gray-400" />
+                </div>
+              )}
+            </div>
+            <label
+              htmlFor="photo-upload"
+              className="absolute bottom-0 right-0 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-pink-600 text-white shadow-lg hover:bg-pink-700"
+            >
+              <FaCamera className="h-5 w-5" />
+              <input
+                type="file"
+                id="photo-upload"
+                className="hidden"
+                accept="image/*"
+                onChange={handlePhotoChange}
+              />
+            </label>
+          </div>
+          <h1 className="text-2xl font-bold text-pink-700">{profile.displayName || 'Add Your Name'}</h1>
+        </div>
+
+        {!isEditing ? (
+          <div className="mb-6 flex justify-end">
             <button
               onClick={() => setIsEditing(true)}
               className="flex items-center gap-2 rounded-lg bg-pink-600 px-4 py-2 text-white hover:bg-pink-700"
             >
               <FaEdit /> Edit Profile
             </button>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setFormData(profile);
-                  setIsEditing(false);
-                }}
-                className="flex items-center gap-2 rounded-lg bg-gray-500 px-4 py-2 text-white hover:bg-gray-600"
-              >
-                <FaTimes /> Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={saving}
-                className="flex items-center gap-2 rounded-lg bg-pink-600 px-4 py-2 text-white hover:bg-pink-700 disabled:opacity-50"
-              >
-                <FaSave /> {saving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="mb-6 flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setFormData(profile);
+                setIsEditing(false);
+              }}
+              className="flex items-center gap-2 rounded-lg bg-gray-500 px-4 py-2 text-white hover:bg-gray-600"
+            >
+              <FaTimes /> Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="flex items-center gap-2 rounded-lg bg-pink-600 px-4 py-2 text-white hover:bg-pink-700 disabled:opacity-50"
+            >
+              <FaSave /> {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-600">
@@ -294,6 +347,15 @@ const ClientProfile = () => {
             </div>
           </div>
         </form>
+
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 rounded-lg bg-red-600 px-6 py-3 text-white hover:bg-red-700 transition-colors"
+          >
+            <FaSignOutAlt /> Logout
+          </button>
+        </div>
       </div>
     </div>
   );

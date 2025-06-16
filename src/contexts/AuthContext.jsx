@@ -16,40 +16,83 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [roleChecked, setRoleChecked] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     const unsubscribe = onAuthState(async (firebaseUser) => {
+      if (!isMounted) return;
+
       if (firebaseUser) {
         setUser(firebaseUser);
+        setRoleChecked(false); // Reset role check when user changes
 
-        // Check which role the user belongs to by scanning all role collections
-        const roles = ['client', 'driver', 'owner'];
-        for (const role of roles) {
-          const profile = await getUserProfile(firebaseUser.uid, role);
-          if (profile) {
-            setUserRole(role);
-            break;
+        try {
+          // Check which role the user belongs to by scanning all role collections
+          const roles = ['client', 'driver', 'owner'];
+          let foundRole = null;
+
+          for (const role of roles) {
+            const profile = await getUserProfile(firebaseUser.uid, role);
+            if (profile) {
+              foundRole = role;
+              break;
+            }
+          }
+
+          if (isMounted) {
+            setUserRole(foundRole);
+            setRoleChecked(true);
+          }
+        } catch (error) {
+          console.error('Error checking user role:', error);
+          if (isMounted) {
+            setUserRole(null);
+            setRoleChecked(true);
           }
         }
       } else {
-        setUser(null);
-        setUserRole(null);
+        if (isMounted) {
+          setUser(null);
+          setUserRole(null);
+          setRoleChecked(true);
+        }
       }
-      setLoading(false);
+      
+      if (isMounted) {
+        setLoading(false);
+      }
     });
 
-    return () => unsubscribe(); // Clean up listener on unmount
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   // Logout function
   const logout = async () => {
-    await signOut();
-    setUser(null);
-    setUserRole(null);
+    try {
+      await signOut();
+      setUser(null);
+      setUserRole(null);
+      setRoleChecked(false);
+    } catch (error) {
+      console.error('Error during logout:', error);
+      throw error;
+    }
+  };
+
+  const value = {
+    user,
+    userRole,
+    loading: loading || !roleChecked, // Consider loading until role is checked
+    logout,
   };
 
   return (
-    <AuthContext.Provider value={{ user, userRole, loading, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
