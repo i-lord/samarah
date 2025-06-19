@@ -58,6 +58,26 @@ npm run dev
 
 This project is ready to deploy on [Vercel](https://vercel.com/). Simply connect your repository and set the environment variables in the Vercel dashboard.
 
+## Screenshots
+
+### Landing Page (Desktop)
+![Landing Page on Computer](src/assets/screenshots/Landing%20page%20on%20computer.png)
+
+### Landing Page (Phone)
+![Landing Page on Phone](src/assets/screenshots/Landing%20Page%20phone.jpg)
+
+### Client Home Page
+![Client Home Page](src/assets/screenshots/Client%20HomePage.jpg)
+
+### Owner Home Page
+![Owner Home Page](src/assets/screenshots/Owner%20Homepage.jpg)
+
+### Driver Home Page 1
+![Driver Home Page 1](src/assets/screenshots/Driver%20HomePage1.jpg)
+
+### Driver Home Page 2
+![Driver Home Page 2](src/assets/screenshots/Driver%20HomePage2.jpg)
+
 ## License
 
 This project is licensed under the MIT License.

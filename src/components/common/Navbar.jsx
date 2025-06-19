@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { FaHome, FaUser, FaBus, FaChartBar, FaClipboardList } from 'react-icons/fa';
 
-// A bottom navigation bar that adapts links based on user role
+// Mobile/Tablet bottom navigation bar only
 const Navbar = () => {
   const { userRole, user } = useAuth();
   const location = useLocation();
@@ -63,8 +63,9 @@ const Navbar = () => {
   if (!userRole || !navItems.length) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t shadow-lg z-40">
-      <ul className="flex h-full justify-around items-center">
+    // Only show on mobile/tablet
+    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t shadow-lg z-40 flex md:hidden">
+      <ul className="flex h-full justify-around items-center w-full">
         {navItems.map(({ label, to, icon }) => {
           const isActive = location.pathname === to;
           return (
