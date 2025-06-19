@@ -6,30 +6,18 @@ import { FaSpinner } from "react-icons/fa";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useAuth } from "../../contexts/AuthContext";
 
-const ClientAuth = () => {
+export default function ClientAuth() {
   const [isRegistering, setIsRegistering] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { user, userRole, roleChecked, checkRole } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
+  const [authError, setAuthError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Watch for role changes and navigate when client role is confirmed
-  useEffect(() => {
-    const checkAndNavigate = async () => {
-      if (user && !userRole && roleChecked) {
-        // If we have a user but no role and role check is complete,
-        // force a role check
-        const role = await checkRole();
-        if (role === 'client') {
-          navigate("/client/home");
-        }
-      } else if (userRole === 'client') {
-        navigate("/client/home");
-      }
-    };
-
-    checkAndNavigate();
-  }, [user, userRole, roleChecked, checkRole, navigate]);
+  const provider = new GoogleAuthProvider();
+  const signInWithGoogle = () => signInWithPopup(auth, provider);
+  const signInWithGoogleRedirect = () => signInWithRedirect(auth, provider);
 
   const createClientProfile = async (user) => {
     try {
@@ -57,57 +45,63 @@ const ClientAuth = () => {
   };
 
   const handleGoogleAuth = async () => {
-    setLoading(true);
-    setError("");
-    const provider = new GoogleAuthProvider();
+    setIsLoading(true);
+    setAuthError(null);
     
     try {
-      // First try popup
-      try {
-        const result = await signInWithPopup(auth, provider);
-        await createClientProfile(result.user);
-        // Navigation will be handled by the useEffect watching userRole
-      } catch (popupError) {
-        // If popup fails (e.g., due to COOP), fall back to redirect
-        console.log("Popup failed, falling back to redirect:", popupError);
-        await signInWithRedirect(auth, provider);
-        // The redirect will happen here, and the result will be handled when the page reloads
-      }
-    } catch (err) {
-      console.error("Authentication error:", err);
-      if (err.code === 'auth/popup-blocked') {
-        setError("Please allow popups for this website to sign in with Google.");
-      } else if (err.code === 'auth/popup-closed-by-user') {
-        setError("Sign-in was cancelled. Please try again.");
-      } else if (err.code === 'auth/cancelled-popup-request') {
-        // This is normal when falling back to redirect
-        return;
-      } else {
-        setError("Authentication failed. Please try again.");
+      // Attempt popup sign-in first
+      const result = await signInWithGoogle();
+      
+      // If we get here, the sign-in was successful
+      // The AuthContext will handle role checking and state updates
+      // No need to manually check role or navigate here
+    } catch (error) {
+      console.error('Google auth error:', error);
+      setAuthError('Failed to sign in with Google. Please try again.');
+      
+      // If popup fails, try redirect
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+        try {
+          await signInWithGoogleRedirect();
+        } catch (redirectError) {
+          console.error('Google redirect auth error:', redirectError);
+          setAuthError('Failed to sign in with Google. Please try again.');
+        }
       }
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   // Handle redirect result when the page loads
   useEffect(() => {
-    const handleRedirectResult = async () => {
+    const checkRedirectResult = async () => {
       try {
         const result = await getRedirectResult(auth);
         if (result) {
-          // User successfully signed in via redirect
-          await createClientProfile(result.user);
-          // Navigation will be handled by the useEffect watching userRole
+          // Redirect sign-in was successful
+          // AuthContext will handle role checking and state updates
         }
-      } catch (err) {
-        console.error("Redirect sign-in error:", err);
-        setError("Authentication failed. Please try again.");
+      } catch (error) {
+        console.error('Redirect result error:', error);
+        setAuthError('Failed to complete sign in. Please try again.');
       }
     };
 
-    handleRedirectResult();
-  }, [navigate]);
+    checkRedirectResult();
+  }, []);
+
+  // Navigate based on auth state
+  useEffect(() => {
+    if (!authLoading) {
+      if (user && userRole === 'client') {
+        navigate('/client/home');
+      } else if (user && userRole !== 'client') {
+        // User is authenticated but not a client
+        navigate('/');
+      }
+    }
+  }, [user, userRole, authLoading, navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-pink-500 to-pink-700 p-4">
@@ -115,19 +109,19 @@ const ClientAuth = () => {
         <h1 className="mb-4 text-center text-2xl font-bold text-gray-800">
           {isRegistering ? "Create an Account" : "Welcome Back"}
         </h1>
-        {error && (
+        {authError && (
           <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-            {error}
+            {authError}
           </div>
         )}
 
         <div className="space-y-4">
           <button
             onClick={handleGoogleAuth}
-            disabled={loading}
+            disabled={isLoading}
             className="flex w-full items-center justify-center gap-2 rounded bg-pink-600 py-2 text-white hover:bg-pink-700 disabled:opacity-50"
           >
-            {loading ? (
+            {isLoading ? (
               <>
                 <FaSpinner className="animate-spin" />
                 Signing in...
@@ -141,7 +135,7 @@ const ClientAuth = () => {
 
           <button
             className="w-full rounded border border-pink-600 py-2 text-pink-600 hover:bg-pink-50 disabled:opacity-50"
-            disabled={loading}
+            disabled={isLoading}
             // TODO: Add phone number auth logic here later
           >
             {isRegistering ? "Sign Up with Phone Number" : "Sign In with Phone Number"}
@@ -153,7 +147,7 @@ const ClientAuth = () => {
           <button
             className="ml-1 font-semibold text-pink-600 hover:underline disabled:opacity-50"
             onClick={() => setIsRegistering(!isRegistering)}
-            disabled={loading}
+            disabled={isLoading}
           >
             {isRegistering ? "Sign In" : "Register"}
           </button>
@@ -161,6 +155,4 @@ const ClientAuth = () => {
       </div>
     </div>
   );
-};
-
-export default ClientAuth;
+}

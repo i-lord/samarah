@@ -24,10 +24,15 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthState(async (firebaseUser) => {
       if (!isMounted) return;
 
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        setRoleChecked(false); // Reset role check when user changes
+      // Reset states when auth state changes
+      if (isMounted) {
+        setUser(null);
+        setUserRole(null);
+        setRoleChecked(false);
+        setLoading(true);
+      }
 
+      if (firebaseUser) {
         try {
           // Check which role the user belongs to by scanning all role collections
           const roles = ['client', 'driver', 'owner'];
@@ -42,14 +47,21 @@ export const AuthProvider = ({ children }) => {
           }
 
           if (isMounted) {
-            setUserRole(foundRole);
+            // Only set user and role if we found a valid role
+            if (foundRole) {
+              setUser(firebaseUser);
+              setUserRole(foundRole);
+            }
             setRoleChecked(true);
+            setLoading(false);
           }
         } catch (error) {
           console.error('Error checking user role:', error);
           if (isMounted) {
+            setUser(null);
             setUserRole(null);
             setRoleChecked(true);
+            setLoading(false);
           }
         }
       } else {
@@ -57,11 +69,8 @@ export const AuthProvider = ({ children }) => {
           setUser(null);
           setUserRole(null);
           setRoleChecked(true);
+          setLoading(false);
         }
-      }
-      
-      if (isMounted) {
-        setLoading(false);
       }
     });
 

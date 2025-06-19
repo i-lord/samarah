@@ -53,7 +53,7 @@ const OwnerProfile = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/owner/auth');
+      navigate('/');
       toast.success('Logged out successfully');
     } catch (err) {
       console.error('Logout error:', err);
