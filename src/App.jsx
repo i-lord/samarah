@@ -15,6 +15,7 @@ import ClientBooking from './pages/client/ClientBooking';
 import DriverProfile from './pages/driver/DriverProfile';
 import DriverAssignment from './pages/driver/DriverAssignment';
 import OwnerProfile from './pages/owner/OwnerProfile';
+import ErrorPage from './pages/ErrorPage';
 
 const App = () => {
   return (
@@ -73,7 +74,7 @@ const App = () => {
       />
 
       {/* Fallback Route */}
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="*" element={<ErrorPage />} />
     </Routes>
   );
 };

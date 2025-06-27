@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../firebase/clientConfig'
 import { onAuthState, signOut } from '../firebase/auth';
 import { getUserProfile } from '../firebase/db';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase/clientConfig';
 
 // Create the context
 const AuthContext = createContext({
@@ -43,6 +45,31 @@ export const AuthProvider = ({ children }) => {
             if (profile) {
               foundRole = role;
               break;
+            }
+          }
+
+          // If no role found, create a client profile and re-check
+          if (!foundRole) {
+            try {
+              const clientRef = doc(db, 'clients', firebaseUser.uid);
+              await setDoc(clientRef, {
+                displayName: firebaseUser.displayName || '',
+                email: firebaseUser.email,
+                photoURL: firebaseUser.photoURL || '',
+                phone: firebaseUser.phoneNumber || '',
+                createdAt: new Date(),
+                updatedAt: new Date()
+              });
+              // Re-check roles after creating profile
+              for (const role of roles) {
+                const profile = await getUserProfile(firebaseUser.uid, role);
+                if (profile) {
+                  foundRole = role;
+                  break;
+                }
+              }
+            } catch (profileError) {
+              console.error('[AuthContext] Error creating client profile:', profileError);
             }
           }
 
