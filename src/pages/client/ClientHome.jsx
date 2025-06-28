@@ -13,6 +13,7 @@ import {
   runTransaction,
 } from 'firebase/firestore';
 import { FaSpinner } from 'react-icons/fa';
+import AccountLayout from '../../components/layouts/AccountLayout';
 
 const ClientHome = () => {
   const { user, userRole } = useAuth();
@@ -308,130 +309,134 @@ const ClientHome = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-pink-50">
-        <div className="text-pink-600">Loading your data...</div>
-      </div>
+      <AccountLayout>
+        <div className="flex min-h-screen items-center justify-center bg-pink-50">
+          <div className="text-pink-600">Loading your data...</div>
+        </div>
+      </AccountLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-pink-50 p-6 flex flex-col items-center">
-      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-md p-6 text-center">
-        <h2 className="text-3xl font-bold text-pink-700 mb-2">
-          {clientData?.displayName ? `Welcome, ${clientData.displayName}` : 'Welcome, Client'}!
-        </h2>
-        <p className="text-gray-600 mb-4">
-          You are logged in as a <span className="font-medium capitalize">{userRole}</span>
-        </p>
-        <p className="text-gray-800 text-lg">
-          Email: <span className="font-semibold">{user?.email}</span>
-        </p>
-        {clientData?.phone && (
-          <p className="text-gray-800 text-lg mt-2">
-            Phone: <span className="font-semibold">{clientData.phone}</span>
+    <AccountLayout>
+      <div className="min-h-screen bg-pink-50 p-6 flex flex-col items-center">
+        <div className="w-full max-w-3xl bg-white rounded-2xl shadow-md p-6 text-center">
+          <h2 className="text-3xl font-bold text-pink-700 mb-2">
+            {clientData?.displayName ? `Welcome, ${clientData.displayName}` : 'Welcome, Client'}!
+          </h2>
+          <p className="text-gray-600 mb-4">
+            You are logged in as a <span className="font-medium capitalize">{userRole}</span>
           </p>
-        )}
-      </div>
-
-      {!currentRoute ? (
-        <div className="mt-10 w-full max-w-3xl">
-          <h3 className="text-2xl font-semibold text-pink-600 mb-4 text-center">Available Routes</h3>
-          {routes.length ? (
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {routes.map((route, idx) => (
-                <li
-                  key={idx}
-                  onClick={() => openModal(route)}
-                  className="cursor-pointer bg-white rounded-xl shadow p-4 text-center hover:shadow-lg transition"
-                >
-                  <span className="text-lg font-medium text-pink-700">{route.routeName}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-600 text-center">No routes available at the moment.</p>
+          <p className="text-gray-800 text-lg">
+            Email: <span className="font-semibold">{user?.email}</span>
+          </p>
+          {clientData?.phone && (
+            <p className="text-gray-800 text-lg mt-2">
+              Phone: <span className="font-semibold">{clientData.phone}</span>
+            </p>
           )}
         </div>
-      ) : (
-        <div className="mt-10 w-full max-w-3xl">
-          <button onClick={resetFlow} className="mb-4 px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
-            Back to Route Selection
-          </button>
-          <h3 className="text-xl font-bold text-pink-700 mb-4 text-center">
-            {currentRoute.routeName} - Available Buses
-          </h3>
-          {renderBusesList()}
-        </div>
-      )}
 
-      {isModalOpen && currentRoute && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-md">
-            <h4 className="text-xl font-semibold text-pink-700 mb-4 text-center">
-              {currentRoute.routeName}
-            </h4>
-            <label className="block mb-2">
-              <span className="text-gray-700">Departure Stop</span>
-              <select
-                value={departure}
-                onChange={e => { setDeparture(e.target.value); setDestination(''); }}
-                className="input block w-full mt-1"
-              >
-                <option value="" disabled>Select departure</option>
-                {currentRoute.stops.map((stop, idx) => (
-                  <option key={idx} value={stop.name ?? stop}>
-                    {stop.name ?? stop}
-                  </option>
+        {!currentRoute ? (
+          <div className="mt-10 w-full max-w-3xl">
+            <h3 className="text-2xl font-semibold text-pink-600 mb-4 text-center">Available Routes</h3>
+            {routes.length ? (
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {routes.map((route, idx) => (
+                  <li
+                    key={idx}
+                    onClick={() => openModal(route)}
+                    className="cursor-pointer bg-white rounded-xl shadow p-4 text-center hover:shadow-lg transition"
+                  >
+                    <span className="text-lg font-medium text-pink-700">{route.routeName}</span>
+                  </li>
                 ))}
-              </select>
-            </label>
-            <label className="block mb-4">
-              <span className="text-gray-700">Destination Stop</span>
-              <select
-                value={destination}
-                onChange={e => setDestination(e.target.value)}
-                disabled={!departure}
-                className="input block w-full mt-1"
-              >
-                <option value="" disabled>
-                  {departure ? 'Select destination' : 'Select departure first'}
-                </option>
-                {currentRoute.stops
-                  .filter(s => (s.name ?? s) !== departure)
-                  .map((stop, idx) => (
+              </ul>
+            ) : (
+              <p className="text-gray-600 text-center">No routes available at the moment.</p>
+            )}
+          </div>
+        ) : (
+          <div className="mt-10 w-full max-w-3xl">
+            <button onClick={resetFlow} className="mb-4 px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
+              Back to Route Selection
+            </button>
+            <h3 className="text-xl font-bold text-pink-700 mb-4 text-center">
+              {currentRoute.routeName} - Available Buses
+            </h3>
+            {renderBusesList()}
+          </div>
+        )}
+
+        {isModalOpen && currentRoute && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-md">
+              <h4 className="text-xl font-semibold text-pink-700 mb-4 text-center">
+                {currentRoute.routeName}
+              </h4>
+              <label className="block mb-2">
+                <span className="text-gray-700">Departure Stop</span>
+                <select
+                  value={departure}
+                  onChange={e => { setDeparture(e.target.value); setDestination(''); }}
+                  className="input block w-full mt-1"
+                >
+                  <option value="" disabled>Select departure</option>
+                  {currentRoute.stops.map((stop, idx) => (
                     <option key={idx} value={stop.name ?? stop}>
                       {stop.name ?? stop}
                     </option>
                   ))}
-              </select>
-            </label>
-            <div className="flex justify-end space-x-4">
-              <button onClick={closeModal} className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={!departure || !destination}
-                className="px-4 py-2 rounded-lg bg-pink-600 text-white disabled:opacity-50 hover:bg-pink-700"
-              >
-                Confirm
-              </button>
+                </select>
+              </label>
+              <label className="block mb-4">
+                <span className="text-gray-700">Destination Stop</span>
+                <select
+                  value={destination}
+                  onChange={e => setDestination(e.target.value)}
+                  disabled={!departure}
+                  className="input block w-full mt-1"
+                >
+                  <option value="" disabled>
+                    {departure ? 'Select destination' : 'Select departure first'}
+                  </option>
+                  {currentRoute.stops
+                    .filter(s => (s.name ?? s) !== departure)
+                    .map((stop, idx) => (
+                      <option key={idx} value={stop.name ?? stop}>
+                        {stop.name ?? stop}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <div className="flex justify-end space-x-4">
+                <button onClick={closeModal} className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={!departure || !destination}
+                  className="px-4 py-2 rounded-lg bg-pink-600 text-white disabled:opacity-50 hover:bg-pink-700"
+                >
+                  Confirm
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {error && (
-        <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
-          {error}
-        </div>
-      )}
-      {successMessage && (
-        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-600">
-          {successMessage}
-        </div>
-      )}
-    </div>
+        {error && (
+          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+            {error}
+          </div>
+        )}
+        {successMessage && (
+          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-600">
+            {successMessage}
+          </div>
+        )}
+      </div>
+    </AccountLayout>
   );
 };
 

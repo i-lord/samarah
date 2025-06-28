@@ -1,138 +1,75 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth } from '../firebase/clientConfig'
-import { onAuthState, signOut } from '../firebase/auth';
+import { auth } from '../firebase/clientConfig';
+import { onAuthStateChanged, getRedirectResult } from 'firebase/auth';
 import { getUserProfile } from '../firebase/db';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/clientConfig';
 
-// Create the context
-const AuthContext = createContext({
-  user: null,
-  userRole: null,
-  loading: true,
-  logout: async () => {},
-});
+const AuthContext = createContext({ user: null, userRole: null, loading: true, logout: async () => {} });
 
-// Provide the context to children
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [roleChecked, setRoleChecked] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
+    let unsubscribe;
 
-    const unsubscribe = onAuthState(async (firebaseUser) => {
-      if (!isMounted) return;
-
-      // Reset states when auth state changes
-      if (isMounted) {
-        setUser(null);
-        setUserRole(null);
-        setRoleChecked(false);
-        setLoading(true);
-      }
-
-      if (firebaseUser) {
-        try {
-          // Check which role the user belongs to by scanning all role collections
-          const roles = ['client', 'driver', 'owner'];
-          let foundRole = null;
-
-          for (const role of roles) {
-            const profile = await getUserProfile(firebaseUser.uid, role);
-            if (profile) {
-              foundRole = role;
-              break;
-            }
-          }
-
-          // If no role found, create a client profile and re-check
-          if (!foundRole) {
-            try {
-              const clientRef = doc(db, 'clients', firebaseUser.uid);
-              await setDoc(clientRef, {
-                displayName: firebaseUser.displayName || '',
-                email: firebaseUser.email,
-                photoURL: firebaseUser.photoURL || '',
-                phone: firebaseUser.phoneNumber || '',
-                createdAt: new Date(),
-                updatedAt: new Date()
-              });
-              // Re-check roles after creating profile
-              for (const role of roles) {
-                const profile = await getUserProfile(firebaseUser.uid, role);
-                if (profile) {
-                  foundRole = role;
-                  break;
-                }
-              }
-            } catch (profileError) {
-              console.error('[AuthContext] Error creating client profile:', profileError);
-            }
-          }
-
-          if (isMounted) {
-            // Only set user and role if we found a valid role
-            if (foundRole) {
-              setUser(firebaseUser);
-              setUserRole(foundRole);
-            }
-            setRoleChecked(true);
-            setLoading(false);
-          }
-        } catch (error) {
-          console.error('Error checking user role:', error);
-          if (isMounted) {
-            setUser(null);
-            setUserRole(null);
-            setRoleChecked(true);
-            setLoading(false);
-          }
-        }
-      } else {
-        if (isMounted) {
+    // First process redirect, then listen
+    getRedirectResult(auth)
+      .catch((e) => console.warn('Redirect result error:', e))
+      .finally(() => {
+        if (!isMounted) return;
+        unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+          if (!isMounted) return;
+          setLoading(true);
           setUser(null);
           setUserRole(null);
-          setRoleChecked(true);
-          setLoading(false);
-        }
-      }
-    });
+
+          if (fbUser) {
+            let role = null;
+            for (const r of ['client','driver','owner']) {
+              const p = await getUserProfile(fbUser.uid, r);
+              if (p) { role = r; break; }
+            }
+            if (!role) {
+              // new client
+              const ref = doc(db, 'clients', fbUser.uid);
+              await setDoc(ref, {
+                displayName: fbUser.displayName || '',
+                email: fbUser.email,
+                photoURL: fbUser.photoURL || '',
+                phone: fbUser.phoneNumber || '',
+                createdAt: new Date(), updatedAt: new Date()
+              });
+              role = 'client';
+            }
+            setUser(fbUser);
+            setUserRole(role);
+          }
+
+          if (isMounted) setLoading(false);
+        });
+      });
 
     return () => {
       isMounted = false;
-      unsubscribe();
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
-  // Logout function
   const logout = async () => {
-    try {
-      await signOut();
-      setUser(null);
-      setUserRole(null);
-      setRoleChecked(false);
-    } catch (error) {
-      console.error('Error during logout:', error);
-      throw error;
-    }
-  };
-
-  const value = {
-    user,
-    userRole,
-    loading: loading || !roleChecked, // Consider loading until role is checked
-    logout,
+    await auth.signOut();
+    setUser(null);
+    setUserRole(null);
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, userRole, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to use the auth context
 export const useAuth = () => useContext(AuthContext);

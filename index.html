@@ -7,6 +7,10 @@
     <link href="./src/index.css" rel="stylesheet" />
     <title>Vite + React</title>
    <!-- <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups"> -->
+      <!-- Allow popups to communicate back despite COOP -->
+  <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups" />
+  <!-- Disable the embedder policy so our scripts can run normally -->
+  <meta http-equiv="Cross-Origin-Embedder-Policy" content="unsafe-none" />
   </head>
   <body>
     <div id="root"></div>

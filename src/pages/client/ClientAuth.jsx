@@ -1,75 +1,59 @@
-import { useState, useEffect } from "react";
-import { GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
-import { auth, db } from "../../firebase/clientConfig";
-import { useNavigate } from "react-router-dom";
-import { FaSpinner } from "react-icons/fa";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { useAuth } from "../../contexts/AuthContext";
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { auth } from '../../firebase/clientConfig';
+import { GoogleAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
+import { FaSpinner, FaPhone } from 'react-icons/fa';
 
 export default function ClientAuth() {
-  const [isRegistering, setIsRegistering] = useState(true);
-  const [authError, setAuthError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const { user, userRole, loading: authLoading } = useAuth();
+  const { user, userRole, loading } = useAuth();
+  const [error, setError] = useState('');
+  const [processing, setProcessing] = useState(false);
+  const [comingSoon, setComingSoon] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(true); // true = sign up, false = sign in
   const navigate = useNavigate();
-
   const provider = new GoogleAuthProvider();
 
-  // Always use redirect for Google sign-in
   const handleGoogleAuth = async () => {
-    setAuthError(null);
-    setIsLoading(true);
+    setError('');
+    setProcessing(true);
     try {
-      await signInWithRedirect(auth, provider);
-    } catch (error) {
-      setAuthError('Failed to sign in with Google. Please try again.');
-      setIsLoading(false);
+      await setPersistence(auth, browserLocalPersistence);
+      await signInWithPopup(auth, provider);
+    } catch (e) {
+      console.error('Popup sign-in error:', e);
+      if (e.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in popup closed before completing authentication.');
+      } else if (e.code === 'auth/cancelled-popup-request') {
+        setError('Popup request was cancelled. Try again.');
+      } else if (e.code === 'auth/network-request-failed') {
+        setError('Network error. Check your connection.');
+      } else {
+        setError('Failed to sign in with Google.');
+      }
+    } finally {
+      setProcessing(false);
     }
   };
 
-  // After redirect, check if profile exists, if not, create it
-  useEffect(() => {
-    const checkAndCreateProfile = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result && result.user) {
-          const user = result.user;
-          const clientRef = doc(db, 'clients', user.uid);
-          const clientSnap = await getDoc(clientRef);
-          if (!clientSnap.exists()) {
-            await setDoc(clientRef, {
-              displayName: user.displayName || '',
-              email: user.email,
-              photoURL: user.photoURL || '',
-              phone: user.phoneNumber || '',
-              createdAt: new Date(),
-              updatedAt: new Date()
-            });
-          }
-        }
-      } catch (error) {
-        setAuthError('Failed to complete sign in. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkAndCreateProfile();
-  }, []);
+  const handlePhoneAuth = () => {
+    setComingSoon(true);
+    setTimeout(() => setComingSoon(false), 2000);
+  };
 
-  // Navigate based on auth state
   useEffect(() => {
-    if (!authLoading && user && userRole === 'client') {
+    if (!loading && user && userRole === 'client') {
       navigate('/client/home');
+    } else if (!loading && user) {
+      setError('Access denied for role: ' + userRole);
     }
-  }, [user, userRole, authLoading, navigate]);
+  }, [user, userRole, loading, navigate]);
 
-  // If already authenticated as client, show only spinner
-  if (!authError && (authLoading || (user && userRole === 'client'))) {
+  if (loading || processing) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-pink-500 to-pink-700">
         <div className="flex items-center gap-2 text-white text-xl">
-          <FaSpinner className="animate-spin" />
-          Redirecting...
+          <FaSpinner className="animate-spin" /> {processing ? 'Signing in...' : 'Loading...'}
         </div>
       </div>
     );
@@ -77,50 +61,53 @@ export default function ClientAuth() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-pink-500 to-pink-700 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
-        <h1 className="mb-4 text-center text-2xl font-bold text-gray-800">
-          {isRegistering ? "Create an Account" : "Welcome Back"}
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
+        <h1 className="mb-6 text-center text-3xl font-bold text-gray-800">
+          {isRegistering ? 'Create an Account' : 'Welcome Back'}
         </h1>
-        {authError && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-            {authError}
-          </div>
+        {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+        <button
+          onClick={handleGoogleAuth}
+          className="w-full rounded-lg bg-pink-600 py-3 text-lg font-semibold text-white hover:bg-pink-700 disabled:opacity-50 mb-4 transition-colors"
+          disabled={processing}
+        >
+          {isRegistering ? 'Sign Up with Google' : 'Sign In with Google'}
+        </button>
+        <button
+          onClick={handlePhoneAuth}
+          className="w-full rounded-lg border-2 border-pink-500 py-3 text-lg font-semibold text-pink-600 bg-white hover:bg-pink-50 disabled:opacity-50 mb-2 transition-colors flex items-center justify-center gap-2"
+          disabled={processing}
+        >
+          <FaPhone /> {isRegistering ? 'Sign Up with Phone Number' : 'Sign In with Phone Number'}
+        </button>
+        {comingSoon && (
+          <div className="text-center text-pink-600 text-sm mb-2">Coming soon!</div>
         )}
-        <div className="space-y-4">
-          <button
-            onClick={handleGoogleAuth}
-            disabled={isLoading || authLoading}
-            className="flex w-full items-center justify-center gap-2 rounded bg-pink-600 py-2 text-white hover:bg-pink-700 disabled:opacity-50"
-          >
-            {(isLoading || authLoading) ? (
-              <>
-                <FaSpinner className="animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              <>
-                {isRegistering ? "Sign Up with Google" : "Sign In with Google"}
-              </>
-            )}
-          </button>
-          <button
-            className="w-full rounded border border-pink-600 py-2 text-pink-600 hover:bg-pink-50 disabled:opacity-50"
-            disabled={isLoading || authLoading}
-            // TODO: Add phone number auth logic here later
-          >
-            {isRegistering ? "Sign Up with Phone Number" : "Sign In with Phone Number"}
-          </button>
+        <div className="mt-4 text-center text-gray-700">
+          {isRegistering ? (
+            <>
+              Already have an account?{' '}
+              <button
+                className="text-pink-600 font-semibold hover:underline"
+                onClick={() => { setIsRegistering(false); setError(''); }}
+                type="button"
+              >
+                Sign In
+              </button>
+            </>
+          ) : (
+            <>
+              Don't have an account?{' '}
+              <button
+                className="text-pink-600 font-semibold hover:underline"
+                onClick={() => { setIsRegistering(true); setError(''); }}
+                type="button"
+              >
+                Register
+              </button>
+            </>
+          )}
         </div>
-        <p className="mt-6 text-center text-sm text-gray-600">
-          {isRegistering ? "Already have an account?" : "Don't have an account?"}
-          <button
-            className="ml-1 font-semibold text-pink-600 hover:underline disabled:opacity-50"
-            onClick={() => setIsRegistering(!isRegistering)}
-            disabled={isLoading || authLoading}
-          >
-            {isRegistering ? "Sign In" : "Register"}
-          </button>
-        </p>
       </div>
     </div>
   );

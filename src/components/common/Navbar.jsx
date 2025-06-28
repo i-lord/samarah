@@ -1,7 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { FaHome, FaUser, FaBus, FaChartBar, FaClipboardList } from 'react-icons/fa';
+
+function getProfileIcon(user) {
+  const [imgError, setImgError] = useState(false);
+  if (user?.photoURL && !imgError) {
+    return (
+      <img
+        src={user.photoURL}
+        alt="Profile"
+        className="w-6 h-6 rounded-full object-cover"
+        onError={() => setImgError(true)}
+      />
+    );
+  } else if (user?.displayName || user?.email) {
+    const letter = (user.displayName || user.email)[0].toUpperCase();
+    return (
+      <span className="w-6 h-6 rounded-full bg-pink-200 text-pink-700 flex items-center justify-center font-bold text-base">
+        {letter}
+      </span>
+    );
+  } else {
+    return <FaUser />;
+  }
+}
 
 // Mobile/Tablet bottom navigation bar only
 const Navbar = () => {
@@ -14,48 +37,30 @@ const Navbar = () => {
     navItems = [
       { label: 'Home', to: '/client/home', icon: <FaHome /> },
       { label: 'Bookings', to: '/client/bookings', icon: <FaClipboardList /> },
-      { 
-        label: 'Profile', 
-        to: '/client/profile', 
-        icon: user?.photoURL ? (
-          <img 
-            src={user.photoURL} 
-            alt="Profile" 
-            className="w-6 h-6 rounded-full object-cover"
-          />
-        ) : <FaUser />
+      {
+        label: 'Profile',
+        to: '/client/profile',
+        icon: getProfileIcon(user),
       },
     ];
   } else if (userRole === 'driver') {
     navItems = [
       { label: 'Home', to: '/driver/home', icon: <FaHome /> },
       { label: 'Assignment', to: '/driver/assignment', icon: <FaBus /> },
-      { 
-        label: 'Profile', 
-        to: '/driver/profile', 
-        icon: user?.photoURL ? (
-          <img 
-            src={user.photoURL} 
-            alt="Profile" 
-            className="w-6 h-6 rounded-full object-cover"
-          />
-        ) : <FaUser />
+      {
+        label: 'Profile',
+        to: '/driver/profile',
+        icon: getProfileIcon(user),
       },
     ];
   } else if (userRole === 'owner') {
     navItems = [
       { label: 'Dashboard', to: '/owner/home', icon: <FaChartBar /> },
       { label: 'Buses', to: '/owner/buses', icon: <FaBus /> },
-      { 
-        label: 'Profile', 
-        to: '/owner/profile', 
-        icon: user?.photoURL ? (
-          <img 
-            src={user.photoURL} 
-            alt="Profile" 
-            className="w-6 h-6 rounded-full object-cover"
-          />
-        ) : <FaUser />
+      {
+        label: 'Profile',
+        to: '/owner/profile',
+        icon: getProfileIcon(user),
       },
     ];
   }
@@ -85,6 +90,6 @@ const Navbar = () => {
       </ul>
     </nav>
   );
-}
+};
 
 export default Navbar;
